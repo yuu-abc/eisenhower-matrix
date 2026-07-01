@@ -1,0 +1,18 @@
+{
+  "name": "優先度マトリクス",
+  "short_name": "優先度",
+  "description": "アイゼンハワーマトリクスでタスクを整理するアプリです。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3F4F8",
+  "theme_color": "#1B2040",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
