@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1B2040">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>優先度マトリクス</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      color-scheme: light dark;
+      --navy: #1B2040;
+      --white: #FFFFFF;
+      --g100: #F3F4F8;
+      --g200: #DDE1EA;
+      --g300: #BCC4D2;
+      --g400: #758196;
+      --danger: #D93A3A;
+      --card-bg: rgba(255,255,255,.84);
+      --overlay: rgba(10,20,40,.48);
+      --shadow: 0 14px 36px rgba(27,32,64,.22);
+      --cross: 2.5px solid var(--navy);
+
+      --c1: #E8503A; --b1: #FFF0EE;
+      --c2: #4B6BFB; --b2: #EDF0FF;
+      --c3: #B96B09; --b3: #FEF7EE;
+      --c4: #5F8359; --b4: #EEF2EC;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --navy: #E9ECF8;
+        --white: #191C28;
+        --g100: #10121A;
+        --g200: #343949;
+        --g300: #51596D;
+        --g400: #A9B1C2;
+        --danger: #FF7676;
+        --card-bg: rgba(27,30,43,.88);
+        --overlay: rgba(0,0,0,.64);
+        --shadow: 0 14px 40px rgba(0,0,0,.42);
+
+        --c1: #FF7664; --b1: #30201F;
+        --c2: #8297FF; --b2: #1F253D;
+        --c3: #E8A24F; --b3: #30271D;
+        --c4: #91B78A; --b4: #222D22;
+      }
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", "Segoe UI", sans-serif;
+      background: var(--g100);
+      color: var(--navy);
+      overscroll-behavior: none;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+
+    /* ─── Header ─── */
+    header {
+      flex-shrink: 0;
+      min-height: 54px;
+      padding: env(safe-area-inset-top) 12px 0;
+      background: var(--white);
+      border-bottom: 1.5px solid var(--navy);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .h-title {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 850;
+      letter-spacing: .01em;
+      white-space: nowrap;
+    }
+
+    .h-count {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--g400);
+      background: var(--g100);
+      border: 1px solid var(--g200);
+      border-radius: 999px;
+      padding: 4px 9px;
+      white-space: nowrap;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--g200);
+      border-radius: 11px;
+      background: var(--g100);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .icon-btn:active { transform: scale(.96); }
+    .icon-btn:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--c2) 35%, transparent);
+      outline-offset: 2px;
+    }
+
+    /* ─── Axis ─── */
+    .axis-bar {
+      flex-shrink: 0;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: min(calc(100% - 20px), 980px);
+      margin: 0 auto;
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      color: var(--g400);
+    }
+
+    /* ─── Matrix ─── */
+    .matrix {
+      flex: 1;
+      min-height: 0;
+      width: min(calc(100% - 12px), 1000px);
+      align-self: center;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      margin: 0 6px calc(6px + env(safe-area-inset-bottom));
+      border: 2.5px solid var(--navy);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--white);
+    }
+
+    .quad {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow .12s ease;
+    }
+
+    #q1 { background: var(--b1); border-right: var(--cross); border-bottom: var(--cross); }
+    #q2 { background: var(--b2); border-bottom: var(--cross); }
+    #q3 { background: var(--b3); border-right: var(--cross); }
+    #q4 { background: var(--b4); }
+
+    .quad.drop-over {
+      box-shadow: inset 0 0 0 3px var(--qc);
+    }
+
+    .q-hdr {
+      flex-shrink: 0;
+      padding: 8px 8px 5px;
+      border-bottom: 1px solid color-mix(in srgb, var(--navy) 10%, transparent);
+    }
+
+    .q-hdr-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .q-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--qc);
+    }
+
+    .q-name {
+      min-width: 0;
+      flex: 1;
+      color: var(--qc);
+      font-size: clamp(11px, 3.2vw, 14px);
+      font-weight: 850;
+      letter-spacing: .01em;
+    }
+
+    .q-cnt {
+      min-width: 20px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--qc);
+      color: #fff;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 850;
+      line-height: 1.45;
+    }
+
+    #q3 .q-cnt { color: #161616; }
+
+    .q-sub {
+      padding-left: 14px;
+      margin-top: 1px;
+      color: var(--g400);
+      font-size: clamp(9px, 2.3vw, 10.5px);
+      font-weight: 650;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ─── Task list/card ─── */
+    .task-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 6px 6px 3px;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    .task-list:empty::after {
+      content: attr(data-hint);
+      display: block;
+      padding: 14px 5px;
+      color: var(--g400);
+      text-align: center;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.55;
+    }
+
+    .task-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 42px;
+      margin-bottom: 5px;
+      padding: 4px 3px 4px 5px;
+      background: var(--card-bg);
+      border: 1px solid color-mix(in srgb, var(--navy) 8%, transparent);
+      border-left: 4px solid var(--qc);
+      border-radius: 9px;
+      box-shadow: 0 2px 7px color-mix(in srgb, var(--navy) 7%, transparent);
+      transition: opacity .12s, transform .12s, box-shadow .12s;
+      cursor: pointer;
+    }
+
+    .task-card:last-child { margin-bottom: 0; }
+    .task-card.is-dragging { opacity: .18; }
+    .task-card.completed { opacity: .62; }
+    .task-card.completed .task-text { text-decoration: line-through; }
+
+    .task-card.drop-before::before,
+    .task-card.drop-after::after {
+      content: "";
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      height: 3px;
+      border-radius: 3px;
+      background: var(--qc);
+      z-index: 2;
+    }
+
+    .task-card.drop-before::before { top: -4px; }
+    .task-card.drop-after::after { bottom: -4px; }
+
+    .task-check {
+      width: 31px;
+      height: 31px;
+      flex: 0 0 31px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .check-ring {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--qc);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .completed .check-ring { background: var(--qc); }
+
+    .task-text {
+      flex: 1;
+      min-width: 0;
+      color: var(--navy);
+      font-size: clamp(12px, 3.1vw, 14px);
+      font-weight: 570;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .drag-handle {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--g400);
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .drag-handle:active { cursor: grabbing; background: color-mix(in srgb, var(--navy) 7%, transparent); }
+
+    .q-add {
+      flex-shrink: 0;
+      min-height: 39px;
+      margin: 4px 6px 6px;
+      padding: 7px 5px;
+      border: 1.5px dashed color-mix(in srgb, var(--navy) 23%, transparent);
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--white) 35%, transparent);
+      color: color-mix(in srgb, var(--navy) 52%, transparent);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .q-add:active {
+      border-style: solid;
+      border-color: var(--qc);
+      color: var(--qc);
+      background: color-mix(in srgb, var(--white) 65%, transparent);
+    }
+
+    /* ─── Drag ghost ─── */
+    #dragGhost {
+      position: fixed;
+      z-index: 9999;
+      display: none;
+      pointer-events: none;
+      transform: rotate(1.5deg) scale(1.025);
+      opacity: .94;
+      box-shadow: var(--shadow);
+      border-radius: 9px;
+    }
+
+    /* ─── Sheets ─── */
+    .sheet-ov {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      align-items: flex-end;
+      background: var(--overlay);
+    }
+
+    .sheet-ov.on { display: flex; }
+
+    .sheet {
+      width: 100%;
+      max-height: min(86dvh, 720px);
+      overflow-y: auto;
+      background: var(--white);
+      border-radius: 22px 22px 0 0;
+      padding: 0 18px calc(18px + env(safe-area-inset-bottom));
+      box-shadow: 0 -8px 40px rgba(10,20,40,.18);
+      animation: sheet-up .22s cubic-bezier(.3,1,.55,1);
+    }
+
+    @keyframes sheet-up {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .s-hdl {
+      width: 38px;
+      height: 4px;
+      margin: 11px auto 17px;
+      border-radius: 4px;
+      background: var(--g200);
+    }
+
+    .s-hdr {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 15px;
+    }
+
+    .s-dot {
+      width: 11px;
+      height: 11px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--c2);
+    }
+
+    .s-ttl {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 850;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field-label {
+      display: block;
+      margin: 0 2px 6px;
+      color: var(--g400);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .text-input, .select-input {
+      width: 100%;
+      min-height: 48px;
+      border: 1.5px solid var(--g200);
+      border-radius: 11px;
+      background: var(--white);
+      color: var(--navy);
+      padding: 11px 13px;
+      outline: none;
+      font-size: 16px;
+      -webkit-appearance: none;
+    }
+
+    .text-input:focus, .select-input:focus {
+      border-color: var(--inp-c, var(--c2));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--inp-c, var(--c2)) 16%, transparent);
+    }
+
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: "⌄";
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-58%);
+      pointer-events: none;
+      color: var(--g400);
+      font-size: 18px;
+    }
+
+    .s-btns {
+      display: flex;
+      gap: 9px;
+      margin-top: 4px;
+    }
+
+    .btn {
+      min-height: 48px;
+      border: 0;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .btn-primary {
+      flex: 1;
+      background: var(--btn-c, var(--c2));
+      color: #fff;
+    }
+
+    #taskSheet[data-q="q3"] .btn-primary { color: #161616; }
+
+    .btn-secondary {
+      padding: 0 18px;
+      background: var(--g100);
+      color: var(--g400);
+      border: 1px solid var(--g200);
+    }
+
+    .btn-danger {
+      width: 100%;
+      margin-top: 11px;
+      background: color-mix(in srgb, var(--danger) 10%, var(--white));
+      color: var(--danger);
+      border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent);
+    }
+
+    .settings-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .settings-btn {
+      width: 100%;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 13px;
+      border: 1px solid var(--g200);
+      border-radius: 12px;
+      background: var(--g100);
+      color: var(--navy);
+      cursor: pointer;
+      text-align: left;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .settings-btn .ico { width: 24px; text-align: center; font-size: 18px; }
+    .settings-btn.danger { color: var(--danger); }
+    .settings-note {
+      margin: 14px 2px 0;
+      color: var(--g400);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    /* ─── Toast ─── */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      z-index: 1200;
+      min-width: min(330px, calc(100% - 28px));
+      max-width: calc(100% - 28px);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 12px 11px 15px;
+      border-radius: 13px;
+      background: #1B2040;
+      color: #fff;
+      box-shadow: var(--shadow);
+      transform: translateX(-50%);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toast.on { display: flex; animation: toast-in .18s ease-out; }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translate(-50%, 8px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    .toast-msg { flex: 1; }
+    .toast-action {
+      border: 0;
+      border-radius: 8px;
+      background: rgba(255,255,255,.14);
+      color: #fff;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    @media (max-width: 390px) {
+      header { padding-left: 9px; padding-right: 9px; }
+      .h-title { font-size: 14px; }
+      .h-count { padding-inline: 7px; }
+      .q-hdr { padding-inline: 6px; }
+      .task-list { padding-inline: 4px; }
+      .q-add { margin-inline: 4px; }
+      .task-card { gap: 2px; padding-left: 2px; padding-right: 1px; }
+      .task-check { width: 28px; flex-basis: 28px; }
+      .check-ring { width: 18px; height: 18px; }
+      .drag-handle { width: 29px; flex-basis: 29px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="h-title">🎯 優先度マトリクス</span>
+  <span class="h-count" id="hCount" aria-live="polite">0件</span>
+  <button class="icon-btn" id="settingsBtn" type="button" aria-label="データ管理を開く">⋯</button>
+</header>
+
+<div class="axis-bar" aria-hidden="true">
+  <span>↕ 重要度</span>
+  <span>←&nbsp; 緊急度 &nbsp;→</span>
+</div>
+
+<main class="matrix" id="matrix" aria-label="アイゼンハワー優先度マトリクス">
+  <section class="quad" id="q1" style="--qc:var(--c1)" aria-labelledby="name-q1">
+    <div class="q-hdr">
+      <div class="q-hdr-row">
+        <span class="q-dot"></span>
+        <h2 class="q-name" id="name-q1">すぐやる</h2>
+        <span class="q-cnt" id="cnt-q1">0</span>
+      </div>
+      <div class="q-sub">緊急 × 重要</div>
+    </div>
+    <div class="task-list" id="list-q1" data-hint="期限が迫った重要タスク"></div>
+    <button class="q-add" type="button" data-q="q1">＋ 追加</button>
+  </section>
+
+  <section class="quad" id="q2" style="--qc:var(--c2)" aria-labelledby="name-q2">
+    <div class="q-hdr">
+      <div class="q-hdr-row">
+        <span class="q-dot"></span>
+        <h2 class="q-name" id="name-q2">計画する</h2>
+        <span class="q-cnt" id="cnt-q2">0</span>
+      </div>
+      <div class="q-sub">重要 × 緊急でない</div>
+    </div>
+    <div class="task-list" id="list-q2" data-hint="長期目標・重要な計画"></div>
+    <button class="q-add" type="button" data-q="q2">＋ 追加</button>
+  </section>
+
+  <section class="quad" id="q3" style="--qc:var(--c3)" aria-labelledby="name-q3">
+    <div class="q-hdr">
+      <div class="q-hdr-row">
+        <span class="q-dot"></span>
+        <h2 class="q-name" id="name-q3">任せる</h2>
+        <span class="q-cnt" id="cnt-q3">0</span>
+      </div>
+      <div class="q-sub">緊急 × 重要でない</div>
+    </div>
+    <div class="task-list" id="list-q3" data-hint="他の人に依頼できるもの"></div>
+    <button class="q-add" type="button" data-q="q3">＋ 追加</button>
+  </section>
+
+  <section class="quad" id="q4" style="--qc:var(--c4)" aria-labelledby="name-q4">
+    <div class="q-hdr">
+      <div class="q-hdr-row">
+        <span class="q-dot"></span>
+        <h2 class="q-name" id="name-q4">手放す</h2>
+        <span class="q-cnt" id="cnt-q4">0</span>
+      </div>
+      <div class="q-sub">重要でない × 緊急でない</div>
+    </div>
+    <div class="task-list" id="list-q4" data-hint="やめるか後回しにするもの"></div>
+    <button class="q-add" type="button" data-q="q4">＋ 追加</button>
+  </section>
+</main>
+
+<div id="dragGhost" aria-hidden="true"></div>
+
+<!-- タスク追加・編集 -->
+<div class="sheet-ov" id="taskSheetOv" aria-hidden="true">
+  <div class="sheet" id="taskSheet" role="dialog" aria-modal="true" aria-labelledby="taskSheetTitle">
+    <div class="s-hdl"></div>
+    <div class="s-hdr">
+      <span class="s-dot" id="taskSheetDot"></span>
+      <h2 class="s-ttl" id="taskSheetTitle">タスクを追加</h2>
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="taskInput">タスク名</label>
+      <input class="text-input" id="taskInput" type="text" placeholder="タスクを入力…"
+             enterkeyhint="done" autocomplete="off" maxlength="120">
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="quadrantSelect">分類</label>
+      <div class="select-wrap">
+        <select class="select-input" id="quadrantSelect">
+          <option value="q1">すぐやる（緊急 × 重要）</option>
+          <option value="q2">計画する（重要 × 緊急でない）</option>
+          <option value="q3">任せる（緊急 × 重要でない）</option>
+          <option value="q4">手放す（重要でない × 緊急でない）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="s-btns">
+      <button class="btn btn-primary" id="taskSaveBtn" type="button">追加する</button>
+      <button class="btn btn-secondary" id="taskCancelBtn" type="button">キャンセル</button>
+    </div>
+    <button class="btn btn-danger" id="taskDeleteBtn" type="button" hidden>このタスクを削除</button>
+  </div>
+</div>
+
+<!-- データ管理 -->
+<div class="sheet-ov" id="settingsSheetOv" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="s-hdl"></div>
+    <div class="s-hdr">
+      <span class="s-dot" style="background:var(--navy)"></span>
+      <h2 class="s-ttl" id="settingsTitle">データ管理</h2>
+    </div>
+
+    <div class="settings-list">
+      <button class="settings-btn" id="exportBtn" type="button"><span class="ico">⇩</span>バックアップを書き出す</button>
+      <button class="settings-btn" id="importBtn" type="button"><span class="ico">⇧</span>バックアップを読み込む</button>
+      <button class="settings-btn" id="clearCompletedBtn" type="button"><span class="ico">✓</span>完了したタスクを削除</button>
+      <button class="settings-btn danger" id="resetBtn" type="button"><span class="ico">↺</span>サンプル状態に戻す</button>
+      <button class="settings-btn" id="settingsCloseBtn" type="button"><span class="ico">×</span>閉じる</button>
+    </div>
+    <p class="settings-note">データはこのブラウザ内に保存されます。機種変更やブラウザデータ削除に備えて、ときどきバックアップを書き出すと安心です。</p>
+  </div>
+</div>
+
+<input id="importFile" type="file" accept="application/json,.json" hidden>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="toast-msg" id="toastMsg"></span>
+  <button class="toast-action" id="toastAction" type="button" hidden></button>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const QUADS = {
+    q1: { name: 'すぐやる', color: '#E8503A' },
+    q2: { name: '計画する', color: '#4B6BFB' },
+    q3: { name: '任せる',   color: '#B96B09' },
+    q4: { name: '手放す',   color: '#5F8359' }
+  };
+
+  const SAMPLE_TEXTS = [
+    { text: '明日の会議の準備',    quadrant: 'q1' },
+    { text: 'プレゼン資料の修正',  quadrant: 'q1' },
+    { text: '英語の勉強を始める',  quadrant: 'q2' },
+    { text: '健康診断を予約する',  quadrant: 'q2' },
+    { text: '備品の発注確認',      quadrant: 'q3' },
+    { text: 'SNSのフォロワー確認', quadrant: 'q4' }
+  ];
+
+  const STORE_KEY = 'eisenhower_v2';
+  const STORE_VERSION = 3;
+
+  const matrix = document.getElementById('matrix');
+  const dragGhost = document.getElementById('dragGhost');
+  const taskSheetOv = document.getElementById('taskSheetOv');
+  const taskSheet = document.getElementById('taskSheet');
+  const taskInput = document.getElementById('taskInput');
+  const quadrantSelect = document.getElementById('quadrantSelect');
+  const taskSheetTitle = document.getElementById('taskSheetTitle');
+  const taskSheetDot = document.getElementById('taskSheetDot');
+  const taskSaveBtn = document.getElementById('taskSaveBtn');
+  const taskDeleteBtn = document.getElementById('taskDeleteBtn');
+  const settingsSheetOv = document.getElementById('settingsSheetOv');
+  const importFile = document.getElementById('importFile');
+  const toast = document.getElementById('toast');
+  const toastMsg = document.getElementById('toastMsg');
+  const toastAction = document.getElementById('toastAction');
+
+  let tasks = [];
+  let editingId = null;
+  let toastTimer = null;
+  let toastCallback = null;
+  let suppressCardClickUntil = 0;
+
+  const drag = {
+    active: false,
+    pointerId: null,
+    id: null,
+    sourceCard: null,
+    offsetX: 0,
+    offsetY: 0,
+    overQuadrant: null,
+    targetId: null,
+    targetAfter: false
+  };
+
+  function createId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function makeSampleTasks() {
+    const now = Date.now();
+    return SAMPLE_TEXTS.map((item, index) => ({
+      id: createId(),
+      text: item.text,
+      quadrant: item.quadrant,
+      completed: false,
+      createdAt: now + index,
+      updatedAt: now + index
+    }));
+  }
+
+  function normalizeTask(raw, index = 0) {
+    if (!raw || typeof raw !== 'object') return null;
+    const text = String(raw.text ?? '').trim();
+    if (!text) return null;
+
+    return {
+      id: String(raw.id ?? createId()),
+      text: text.slice(0, 120),
+      quadrant: Object.hasOwn(QUADS, raw.quadrant) ? raw.quadrant : 'q2',
+      completed: Boolean(raw.completed),
+      createdAt: Number.isFinite(Number(raw.createdAt)) ? Number(raw.createdAt) : Date.now() + index,
+      updatedAt: Number.isFinite(Number(raw.updatedAt)) ? Number(raw.updatedAt) : Date.now() + index
+    };
+  }
+
+  function load() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (parsed && Array.isArray(parsed.tasks)) {
+        tasks = parsed.tasks.map(normalizeTask).filter(Boolean);
+        ensureUniqueIds();
+        return;
+      }
+    } catch (error) {
+      console.warn('保存データを読み込めませんでした。', error);
+    }
+    tasks = makeSampleTasks();
+    save(false);
+  }
+
+  function ensureUniqueIds() {
+    const seen = new Set();
+    tasks.forEach(task => {
+      if (seen.has(task.id)) task.id = createId();
+      seen.add(task.id);
+    });
+  }
+
+  function save(showError = true) {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        version: STORE_VERSION,
+        savedAt: new Date().toISOString(),
+        tasks
+      }));
+      return true;
+    } catch (error) {
+      console.error('保存できませんでした。', error);
+      if (showError) showToast('データを保存できませんでした');
+      return false;
+    }
+  }
+
+  function render() {
+    let activeTotal = 0;
+    let completedTotal = 0;
+
+    Object.keys(QUADS).forEach(qid => {
+      const list = document.getElementById(`list-${qid}`);
+      const count = document.getElementById(`cnt-${qid}`);
+      const qTasks = tasks.filter(task => task.quadrant === qid);
+
+      list.replaceChildren(...qTasks.map(task => createTaskCard(task, qid)));
+      count.textContent = String(qTasks.length);
+      count.hidden = qTasks.length === 0;
+
+      activeTotal += qTasks.filter(task => !task.completed).length;
+      completedTotal += qTasks.filter(task => task.completed).length;
+    });
+
+    document.getElementById('hCount').textContent = completedTotal
+      ? `${activeTotal}件・完了${completedTotal}`
+      : `${activeTotal}件`;
+  }
+
+  function createTaskCard(task, qid) {
+    const card = document.createElement('article');
+    card.className = `task-card${task.completed ? ' completed' : ''}`;
+    card.dataset.id = task.id;
+    card.style.setProperty('--qc', `var(--c${qid.slice(1)})`);
+    card.tabIndex = 0;
+    card.setAttribute('aria-label', `${task.text}。タップして編集`);
+
+    const check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'task-check';
+    check.dataset.action = 'toggle';
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', String(task.completed));
+    check.setAttribute('aria-label', task.completed ? '未完了に戻す' : '完了にする');
+
+    const ring = document.createElement('span');
+    ring.className = 'check-ring';
+    ring.textContent = task.completed ? '✓' : '';
+    check.appendChild(ring);
+
+    const text = document.createElement('span');
+    text.className = 'task-text';
+    text.textContent = task.text;
+
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'drag-handle';
+    handle.dataset.action = 'drag';
+    handle.setAttribute('aria-label', 'ドラッグして移動');
+    handle.textContent = '⠿';
+
+    card.append(check, text, handle);
+    return card;
+  }
+
+  function openTaskSheet(qid, id = null) {
+    editingId = id;
+    const task = id ? tasks.find(item => item.id === id) : null;
+    const selectedQ = task?.quadrant || qid || 'q2';
+    const q = QUADS[selectedQ];
+
+    taskSheet.dataset.q = selectedQ;
+    taskSheetTitle.textContent = task ? 'タスクを編集' : `「${q.name}」に追加`;
+    taskSheetTitle.style.color = q.color;
+    taskSheetDot.style.background = q.color;
+    taskInput.style.setProperty('--inp-c', q.color);
+    quadrantSelect.style.setProperty('--inp-c', q.color);
+    taskSaveBtn.style.setProperty('--btn-c', q.color);
+    taskSaveBtn.textContent = task ? '変更を保存' : '追加する';
+    taskDeleteBtn.hidden = !task;
+    taskInput.value = task?.text || '';
+    quadrantSelect.value = selectedQ;
+
+    setOverlay(taskSheetOv, true);
+    window.setTimeout(() => {
+      taskInput.focus();
+      taskInput.setSelectionRange(taskInput.value.length, taskInput.value.length);
+    }, 80);
+  }
+
+  function closeTaskSheet() {
+    setOverlay(taskSheetOv, false);
+    taskInput.blur();
+    editingId = null;
+  }
+
+  function updateTaskSheetColor() {
+    const qid = quadrantSelect.value;
+    const q = QUADS[qid];
+    taskSheet.dataset.q = qid;
+    taskSheetDot.style.background = q.color;
+    taskSheetTitle.style.color = q.color;
+    taskInput.style.setProperty('--inp-c', q.color);
+    quadrantSelect.style.setProperty('--inp-c', q.color);
+    taskSaveBtn.style.setProperty('--btn-c', q.color);
+  }
+
+  function saveTaskFromSheet() {
+    const text = taskInput.value.trim();
+    const quadrant = quadrantSelect.value;
+
+    if (!text) {
+      taskInput.focus();
+      showToast('タスク名を入力してください');
+      return;
+    }
+
+    if (editingId) {
+      const task = tasks.find(item => item.id === editingId);
+      if (!task) return;
+      task.text = text.slice(0, 120);
+      task.quadrant = quadrant;
+      task.updatedAt = Date.now();
+      save();
+      render();
+      closeTaskSheet();
+      showToast('変更を保存しました');
+      return;
+    }
+
+    tasks.unshift({
+      id: createId(),
+      text: text.slice(0, 120),
+      quadrant,
+      completed: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    save();
+    render();
+    closeTaskSheet();
+    showToast('タスクを追加しました');
+  }
+
+  function deleteEditingTask() {
+    if (!editingId) return;
+    const index = tasks.findIndex(item => item.id === editingId);
+    if (index < 0) return;
+
+    const [deleted] = tasks.splice(index, 1);
+    save();
+    render();
+    closeTaskSheet();
+    showToast('タスクを削除しました', '元に戻す', () => {
+      tasks.splice(Math.min(index, tasks.length), 0, deleted);
+      save();
+      render();
+      showToast('元に戻しました');
+    });
+  }
+
+  function toggleTask(id) {
+    const task = tasks.find(item => item.id === id);
+    if (!task) return;
+    task.completed = !task.completed;
+    task.updatedAt = Date.now();
+    save();
+    render();
+    showToast(task.completed ? '完了にしました' : '未完了に戻しました');
+  }
+
+  function setOverlay(overlay, open) {
+    overlay.classList.toggle('on', open);
+    overlay.setAttribute('aria-hidden', String(!open));
+  }
+
+  function showToast(message, actionLabel = '', callback = null, duration = 3600) {
+    window.clearTimeout(toastTimer);
+    toastCallback = callback;
+    toastMsg.textContent = message;
+    toastAction.hidden = !actionLabel;
+    toastAction.textContent = actionLabel;
+    toast.classList.add('on');
+
+    toastTimer = window.setTimeout(() => {
+      toast.classList.remove('on');
+      toastCallback = null;
+    }, duration);
+  }
+
+  function hideToast() {
+    window.clearTimeout(toastTimer);
+    toast.classList.remove('on');
+    toastCallback = null;
+  }
+
+  /* ─── Pointer drag: mouse/touch common ─── */
+  function beginDrag(event, handle) {
+    if (event.button !== undefined && event.button !== 0) return;
+    const card = handle.closest('.task-card');
+    if (!card) return;
+
+    event.preventDefault();
+    const rect = card.getBoundingClientRect();
+
+    drag.active = true;
+    drag.pointerId = event.pointerId;
+    drag.id = card.dataset.id;
+    drag.sourceCard = card;
+    drag.offsetX = event.clientX - rect.left;
+    drag.offsetY = event.clientY - rect.top;
+    drag.overQuadrant = card.closest('.quad')?.id || null;
+    drag.targetId = null;
+    drag.targetAfter = false;
+
+    handle.setPointerCapture?.(event.pointerId);
+    card.classList.add('is-dragging');
+
+    const clone = card.cloneNode(true);
+    clone.classList.remove('is-dragging', 'drop-before', 'drop-after');
+    clone.style.width = `${rect.width}px`;
+    dragGhost.replaceChildren(clone);
+    dragGhost.style.width = `${rect.width}px`;
+    dragGhost.style.display = 'block';
+    moveGhost(event.clientX, event.clientY);
+    updateDropTarget(event.clientX, event.clientY);
+  }
+
+  function moveGhost(x, y) {
+    dragGhost.style.left = `${x - drag.offsetX}px`;
+    dragGhost.style.top = `${y - drag.offsetY}px`;
+  }
+
+  function updateDropTarget(x, y) {
+    clearDropMarkers();
+    const element = document.elementFromPoint(x, y);
+    const quadrant = element?.closest('.quad');
+    if (!quadrant) {
+      drag.overQuadrant = null;
+      drag.targetId = null;
+      return;
+    }
+
+    drag.overQuadrant = quadrant.id;
+    quadrant.classList.add('drop-over');
+
+    const targetCard = element.closest('.task-card');
+    if (!targetCard || targetCard.dataset.id === drag.id) {
+      drag.targetId = null;
+      drag.targetAfter = false;
+      return;
+    }
+
+    const rect = targetCard.getBoundingClientRect();
+    const after = y > rect.top + rect.height / 2;
+    drag.targetId = targetCard.dataset.id;
+    drag.targetAfter = after;
+    targetCard.classList.add(after ? 'drop-after' : 'drop-before');
+  }
+
+  function finishDrag(cancelled = false) {
+    if (!drag.active) return;
+
+    if (!cancelled && drag.overQuadrant) {
+      moveTask(drag.id, drag.overQuadrant, drag.targetId, drag.targetAfter);
+    }
+
+    drag.sourceCard?.classList.remove('is-dragging');
+    dragGhost.style.display = 'none';
+    dragGhost.replaceChildren();
+    clearDropMarkers();
+    suppressCardClickUntil = Date.now() + 350;
+
+    drag.active = false;
+    drag.pointerId = null;
+    drag.id = null;
+    drag.sourceCard = null;
+    drag.overQuadrant = null;
+    drag.targetId = null;
+    drag.targetAfter = false;
+  }
+
+  function clearDropMarkers() {
+    document.querySelectorAll('.quad.drop-over').forEach(el => el.classList.remove('drop-over'));
+    document.querySelectorAll('.task-card.drop-before, .task-card.drop-after').forEach(el => {
+      el.classList.remove('drop-before', 'drop-after');
+    });
+  }
+
+  function moveTask(id, quadrant, targetId = null, after = false) {
+    const oldIndex = tasks.findIndex(item => item.id === id);
+    if (oldIndex < 0) return;
+
+    const [task] = tasks.splice(oldIndex, 1);
+    task.quadrant = quadrant;
+    task.updatedAt = Date.now();
+
+    if (targetId) {
+      const targetIndex = tasks.findIndex(item => item.id === targetId);
+      if (targetIndex >= 0) {
+        tasks.splice(targetIndex + (after ? 1 : 0), 0, task);
+      } else {
+        tasks.push(task);
+      }
+    } else {
+      let insertAt = -1;
+      tasks.forEach((item, index) => {
+        if (item.quadrant === quadrant) insertAt = index;
+      });
+      tasks.splice(insertAt + 1, 0, task);
+    }
+
+    save();
+    render();
+  }
+
+  /* ─── Backup / import ─── */
+  function exportBackup() {
+    const payload = {
+      app: '優先度マトリクス',
+      version: STORE_VERSION,
+      exportedAt: new Date().toISOString(),
+      tasks
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `eisenhower-backup-${date}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('バックアップを書き出しました');
+  }
+
+  async function importBackup(file) {
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const source = Array.isArray(parsed) ? parsed : parsed.tasks;
+      if (!Array.isArray(source)) throw new Error('tasks がありません');
+
+      const imported = source.map(normalizeTask).filter(Boolean);
+      if (!imported.length && source.length) throw new Error('有効なタスクがありません');
+      if (!window.confirm(`現在のデータを置き換えて、${imported.length}件を読み込みますか？`)) return;
+
+      tasks = imported;
+      ensureUniqueIds();
+      save();
+      render();
+      setOverlay(settingsSheetOv, false);
+      showToast(`${tasks.length}件を読み込みました`);
+    } catch (error) {
+      console.error(error);
+      showToast('このバックアップは読み込めませんでした');
+    } finally {
+      importFile.value = '';
+    }
+  }
+
+  function clearCompleted() {
+    const completed = tasks.filter(task => task.completed);
+    if (!completed.length) {
+      showToast('完了したタスクはありません');
+      return;
+    }
+    if (!window.confirm(`完了した${completed.length}件を削除しますか？`)) return;
+
+    const before = [...tasks];
+    tasks = tasks.filter(task => !task.completed);
+    save();
+    render();
+    setOverlay(settingsSheetOv, false);
+    showToast(`${completed.length}件を削除しました`, '元に戻す', () => {
+      tasks = before;
+      save();
+      render();
+      showToast('元に戻しました');
+    }, 5000);
+  }
+
+  function resetSamples() {
+    if (!window.confirm('すべてのタスクを消して、最初のサンプル状態に戻しますか？')) return;
+    tasks = makeSampleTasks();
+    save();
+    render();
+    setOverlay(settingsSheetOv, false);
+    showToast('サンプル状態に戻しました');
+  }
+
+  /* ─── Events: attached once ─── */
+  matrix.addEventListener('click', event => {
+    const addButton = event.target.closest('.q-add');
+    if (addButton) {
+      openTaskSheet(addButton.dataset.q);
+      return;
+    }
+
+    const card = event.target.closest('.task-card');
+    if (!card) return;
+
+    const action = event.target.closest('[data-action]')?.dataset.action;
+    if (action === 'toggle') {
+      event.stopPropagation();
+      toggleTask(card.dataset.id);
+      return;
+    }
+    if (action === 'drag' || Date.now() < suppressCardClickUntil) return;
+
+    openTaskSheet(null, card.dataset.id);
+  });
+
+  matrix.addEventListener('keydown', event => {
+    const card = event.target.closest('.task-card');
+    if (!card || event.target.closest('button')) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openTaskSheet(null, card.dataset.id);
+    }
+  });
+
+  matrix.addEventListener('pointerdown', event => {
+    const handle = event.target.closest('.drag-handle');
+    if (handle) beginDrag(event, handle);
+  });
+
+  document.addEventListener('pointermove', event => {
+    if (!drag.active || event.pointerId !== drag.pointerId) return;
+    event.preventDefault();
+    moveGhost(event.clientX, event.clientY);
+    updateDropTarget(event.clientX, event.clientY);
+  }, { passive: false });
+
+  document.addEventListener('pointerup', event => {
+    if (!drag.active || event.pointerId !== drag.pointerId) return;
+    finishDrag(false);
+  });
+
+  document.addEventListener('pointercancel', event => {
+    if (!drag.active || event.pointerId !== drag.pointerId) return;
+    finishDrag(true);
+  });
+
+  taskSaveBtn.addEventListener('click', saveTaskFromSheet);
+  document.getElementById('taskCancelBtn').addEventListener('click', closeTaskSheet);
+  taskDeleteBtn.addEventListener('click', deleteEditingTask);
+  quadrantSelect.addEventListener('change', updateTaskSheetColor);
+  taskInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      saveTaskFromSheet();
+    }
+  });
+
+  taskSheetOv.addEventListener('click', event => {
+    if (event.target === taskSheetOv) closeTaskSheet();
+  });
+
+  document.getElementById('settingsBtn').addEventListener('click', () => setOverlay(settingsSheetOv, true));
+  document.getElementById('settingsCloseBtn').addEventListener('click', () => setOverlay(settingsSheetOv, false));
+  settingsSheetOv.addEventListener('click', event => {
+    if (event.target === settingsSheetOv) setOverlay(settingsSheetOv, false);
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', exportBackup);
+  document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+  document.getElementById('clearCompletedBtn').addEventListener('click', clearCompleted);
+  document.getElementById('resetBtn').addEventListener('click', resetSamples);
+  importFile.addEventListener('change', () => importBackup(importFile.files?.[0]));
+
+  toastAction.addEventListener('click', () => {
+    const callback = toastCallback;
+    hideToast();
+    callback?.();
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    if (drag.active) finishDrag(true);
+    if (taskSheetOv.classList.contains('on')) closeTaskSheet();
+    if (settingsSheetOv.classList.contains('on')) setOverlay(settingsSheetOv, false);
+  });
+
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
