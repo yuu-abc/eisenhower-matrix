@@ -6,6 +6,9 @@
   <meta name="theme-color" content="#1B2040">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="優先度">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <title>優先度マトリクス</title>
   <style>
     *, *::before, *::after {
@@ -1342,6 +1345,14 @@
 
   load();
   render();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(error => {
+        console.warn('Service Workerを登録できませんでした。', error);
+      });
+    });
+  }
 })();
 </script>
 </body>

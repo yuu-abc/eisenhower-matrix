@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="優先度マトリクス">
+  <rect width="512" height="512" rx="96" fill="#1B2040"/>
+  <rect x="96" y="96" width="150" height="150" rx="24" fill="#E8503A"/>
+  <rect x="266" y="96" width="150" height="150" rx="24" fill="#4B6BFB"/>
+  <rect x="96" y="266" width="150" height="150" rx="24" fill="#B96B09"/>
+  <rect x="266" y="266" width="150" height="150" rx="24" fill="#5F8359"/>
+  <path d="M256 84v344M84 256h344" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round"/>
+</svg>
